@@ -1,0 +1,13 @@
+groq==0.22.0
+keyboard==0.13.5
+numpy==2.2.4
+openai==1.70.0
+PyAudio==0.2.14
+pyperclip==1.8.2
+sounddevice==0.5.1
+soundfile==0.13.1
+tensorflow==2.6.0
+tensorflow==2.19.0
+transformers==4.50.3
+webrtcvad_wheels==2.0.14
+whispercpp==0.0.17
