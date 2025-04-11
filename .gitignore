@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# Unwanted files
+.test_audio.wav
+.transcription.py
+.audio_processing.py
+
 # Distribution / packaging
 .Python
 build/
