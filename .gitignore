@@ -8,8 +8,7 @@ __pycache__/
 
 # Unwanted files
 .test_audio.wav
-.transcription.py
-.audio_processing.py
+.script.py
 
 # Distribution / packaging
 .Python
