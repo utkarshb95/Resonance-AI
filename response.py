@@ -172,6 +172,8 @@ def response_worker():
             
             if response := detector.process_input(text, speaker):
                 RESPONSE_QUEUE.put(response)
+            
+            TRANSCRIPTION_QUEUE.task_done()
                 
         except Empty:
             continue
@@ -179,5 +181,4 @@ def response_worker():
             break
         except Exception as e:
             print(f"⚠️ Response worker error: {e}")
-        finally:
             TRANSCRIPTION_QUEUE.task_done()
