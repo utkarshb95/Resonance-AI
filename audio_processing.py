@@ -1,75 +1,115 @@
-import sounddevice as sd
 import numpy as np
-import queue
-from collections import deque
-from whispercpp import Whisper
-from openai import OpenAI
-import soundfile as sf
-import os
-from io import BytesIO
-import keyboard
-from groq import Groq
 import time
-import pyaudio
-import wave
-import tempfile
-import pyperclip
-import webrtcvad
-import threading
-from transformers import pipeline, logging
-import tensorflow as tf
-import torch
 import difflib
-import faster_whisper
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-# print(sd.query_devices())
+import threading
+from config import (
+    WHISPER_MODELS, RATE, MIN_SEGMENT_LENGTH, REQUEST_INTERVAL, OVERLAP,
+    TRANSCRIPTION_HISTORY, TRANSCRIPTION_QUEUE, DEDUPE_SIMILARITY, MAX_HISTORY_LENGTH,
+    VAD_MODE, VAD_AGGRESSIVENESS, SYS_AUDIO_INDEX, MIC_AUDIO_INDEX,
+    OUTPUT_DEVICE_INDEX, CHUNK, CHANNELS_RECORD_SYS, CHANNELS_RECORD_MIC,
+    CHANNELS_PLAYBACK, FORMAT, LAST_REQUEST_TIME, SIMILARITY_THRESHOLD
+)
 
+class AudioTranscriber:
+    def __init__(self):
+        """Initialize the audio transcriber with necessary parameters."""
+        self.last_request_time = {"system": 0, "microphone": 0}
+        self.audio_buffers = {"system": np.array([], dtype=np.int16), "microphone": np.array([], dtype=np.int16)}
 
-# Parameters for audio recording
-FORMAT = pyaudio.paInt16      # 16-bit format
-CHANNELS_RECORD_SYS = 2       # Stereo audio for system recording
-CHANNELS_RECORD_MIC = 1       # Mono audio for recording
-CHANNELS_PLAYBACK = 2         # Stereo audio for playback
-RATE = 16000                  # Sampling rate (16 kHz)
-CHUNK = 480                   # Buffer size
-SYS_AUDIO_INDEX = 1           # System audio device index (virtual cable)
-MIC_AUDIO_INDEX = 2           # Microphone device index
-OUTPUT_DEVICE_INDEX = 12      # Output device index
-
-# Additional parameters for transcription
-MIN_SEGMENT_LENGTH = 3  # Seconds of audio per request
-REQUEST_INTERVAL = 1.5 # Seconds between requests (under 20/min)
-LAST_REQUEST_TIME = {"system": 0, "microphone": 0}
-VAD_AGGRESSIVENESS = 1  # WebRTC VAD filter
-
-# Post processing parameters
-SIMILARITY_THRESHOLD = 0.75  # 75% similarity considered duplicate
-MAX_HISTORY_LENGTH = 5       # Keep last 5 transcriptions 
-TRANSCRIPTION_HISTORY = {"system": [], "microphone": []}
-
-# Queues for async processing
-sys_queue = queue.Queue()
-mic_queue = queue.Queue()
-
-# Deduplicate function
-DEDUPE_WINDOW = 5  # Compare last 5 words for duplicates
-DEDUPE_SIMILARITY = 0.65  # 65% similarity = duplicate
-def deduplicate(new_text, history):
-    """Remove redundant phrases using sliding window comparison"""
-    if not new_text or not history:
-        return new_text
+    @staticmethod
+    def deduplicate(new_text, history):
+        """Deduplicate transcriptions based on similarity."""
+        if not new_text or not history:
+            return new_text
+        
+        last_text = history[-1]
+        similarity = difflib.SequenceMatcher(None, new_text.lower(), last_text.lower()).ratio()
+        return new_text if similarity < DEDUPE_SIMILARITY else ""
     
-    # Split into words
-    new_words = new_text.split()
-    last_words = history[-1].split()[-DEDUPE_WINDOW:]  # Last N words of previous transcript
+    @staticmethod
+    def is_speech(audio_chunk):
+        """Validate and check for speech in 30ms mono chunks."""
+        if len(audio_chunk) != 480:  # 30ms @16kHz
+            return False
+        # audio_chunk = audio_chunk * 1.5  # 3.5dB gain
+        return VAD_MODE.is_speech(
+            audio_chunk.astype(np.int16).tobytes(),
+            sample_rate=RATE,
+            length=len(audio_chunk) # Explicitly state length
+        )
     
-    # Check for overlapping prefix
-    overlap = 0
-    for i in range(1, min(len(new_words), len(last_words)) + 1):
-        if new_words[:i] == last_words[-i:]:
-            overlap = i
-    
-    # Remove overlapping part
-    return " ".join(new_words[overlap:]) if overlap > 0 else new_text
+    @staticmethod
+    def transcribe_audio(audio_np, source_name):
+        """Transcribe audio data using Whisper model."""
+        audio_np = audio_np.astype(np.float32) / 32768.0 # Normalize to float32
 
+        # Convert stereo to mono if needed
+        if audio_np.ndim > 1:
+            audio_np = audio_np.mean(axis=1)
 
+        # Final validation before transcription to catch VAD false positives (RMS Energy Check) 
+        def is_silent(audio_np, threshold=0.02):
+            rms = np.sqrt(np.mean(audio_np**2))
+            return rms < threshold
+        if is_silent(audio_np):     # Skip silent segments
+            return ""
+
+        try:
+            segments, _ = WHISPER_MODELS[source_name].transcribe(
+                audio_np, 
+                language="en",
+                beam_size=5,
+                temperature=0.3,
+                word_timestamps=True,
+                vad_filter=False,
+                repetition_penalty=1.5,
+                no_speech_threshold=0.25,
+                condition_on_previous_text=True,
+                patience=1.5,
+                initial_prompt="Focus on computer science terms",
+                prefix=TRANSCRIPTION_HISTORY[source_name][-1] if TRANSCRIPTION_HISTORY[source_name] else ""
+            )
+            return f"[{source_name.upper()}]: {' '.join(seg.text for seg in segments)}"
+
+        except Exception as e:
+            print(f"⚠️ {source_name} transcription failed: {str(e)}")
+            return ""
+
+    def process_audio(self, queue, source):
+        """Process audio data from the queue and transcribe."""
+        while True:
+            data = queue.get()
+            if data is None:  # Exit signal
+                break
+            
+            try:
+                self.audio_buffers[source] = np.concatenate([self.audio_buffers[source], data])
+                required_samples = int(MIN_SEGMENT_LENGTH * RATE)  # Minimum segment length in samples
+
+                current_time = time.time()
+                if (len(self.audio_buffers[source]) >= required_samples and
+                        current_time - self.last_request_time[source] >= REQUEST_INTERVAL):
+
+                    segment = self.audio_buffers[source][:required_samples]
+                    self.audio_buffers[source] = self.audio_buffers[source][-(required_samples + int(RATE * OVERLAP)):]
+
+                    speech_detected = any(self.is_speech(segment[i:i+480]) for i in range(0, len(segment), 480))
+                    if not speech_detected:
+                        print(f"⚠️ No speech detected in {source} audio segment.")
+                        continue
+
+                    text = self.transcribe_audio(segment, source)
+                    self.last_request_time[source] = current_time
+
+                    if text:
+                        clean_text = self.deduplicate(text, TRANSCRIPTION_HISTORY[source])
+                        TRANSCRIPTION_HISTORY[source].append(clean_text)
+                        TRANSCRIPTION_HISTORY[source] = TRANSCRIPTION_HISTORY[source][-MAX_HISTORY_LENGTH:]
+
+                        print(clean_text)
+
+                        # Add to transcription queue for response generation
+                        if clean_text and not TRANSCRIPTION_QUEUE.full():
+                            TRANSCRIPTION_QUEUE.put(f"[{source.upper()}]: {clean_text}")
+            finally:
+                queue.task_done()

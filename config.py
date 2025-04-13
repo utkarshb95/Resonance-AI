@@ -47,6 +47,14 @@ OVERLAP = 1.2           # Overlap in seconds for audio segments
 REQUEST_INTERVAL = 1.5  # Seconds between requests (under 20/min)
 LAST_REQUEST_TIME = {"system": 0, "microphone": 0}
 VAD_AGGRESSIVENESS = 1  # WebRTC VAD filter
+VAD_MODE = webrtcvad.Vad(VAD_AGGRESSIVENESS)  # Initialize VAD
+DEDUPE_SIMILARITY = 0.65  # Adjusted for better balance
+
+# Initialize models once (outside worker threads)
+WHISPER_MODELS = {
+    "system": faster_whisper.WhisperModel("small.en", device="cuda", compute_type="float16"),
+    "microphone": faster_whisper.WhisperModel("small.en", device="cuda", compute_type="float16")
+}
 
 # Post processing parameters
 SIMILARITY_THRESHOLD = 0.75  # 75% similarity considered duplicate
