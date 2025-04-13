@@ -1,30 +1,9 @@
 import os
-import time
 import queue
-import threading
-import tempfile
-import wave
-import re
-from io import BytesIO
-from functools import lru_cache
-from collections import deque
-
-import numpy as np
-import sounddevice as sd
-import soundfile as sf
 import pyaudio
-import keyboard
-import pyperclip
 import webrtcvad
-import difflib
-
 from groq import Groq
-from openai import OpenAI
-from transformers import pipeline, logging, GPT2TokenizerFast
-from sentence_transformers import SentenceTransformer
-from rapidfuzz import fuzz
-import tensorflow as tf
-import torch
+from transformers import logging
 import faster_whisper
 
 # Initialize the Groq client with the API key from environment variables
@@ -68,3 +47,35 @@ TRANSCRIPTION_QUEUE = queue.Queue(maxsize=200)
 RESPONSE_QUEUE = queue.Queue(maxsize=20)
 
 logging.set_verbosity_error()  # Suppress warnings
+
+
+
+# import appendix
+# import os
+# import time
+# import queue
+# import threading
+# import tempfile
+# import wave
+# import re
+# from io import BytesIO
+# from functools import lru_cache
+# from collections import deque
+
+# import numpy as np
+# import sounddevice as sd
+# import soundfile as sf
+# import pyaudio
+# import keyboard
+# import pyperclip
+# import webrtcvad
+# import difflib
+
+# from groq import Groq
+# from openai import OpenAI
+# from transformers import pipeline, logging, GPT2TokenizerFast
+# from sentence_transformers import SentenceTransformer
+# from rapidfuzz import fuzz
+# import tensorflow as tf
+# import torch
+# import faster_whisper

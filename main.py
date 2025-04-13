@@ -3,6 +3,7 @@ import time
 from config import sys_queue, mic_queue
 from audio_processing import AudioTranscriber
 from audio_stream import AudioStreamManager
+from response import response_worker
 
 class MainApp:
     def __init__(self):
@@ -25,6 +26,9 @@ class MainApp:
 
             print("Transcription threads started. Press Ctrl+C to stop.")
 
+            # Start the response worker thread
+            threading.Thread(target=response_worker, daemon=True).start()
+
             while self._run:
                 # Main loop to keep the app running
                 time.sleep(1)
@@ -46,7 +50,7 @@ class MainApp:
 if __name__ == "__main__":
     app = MainApp()
     app.start()
-    print("Transcription stopped.")
+    print("Program stopped.")
 
 
     
