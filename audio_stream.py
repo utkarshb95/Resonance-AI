@@ -81,6 +81,7 @@ class AudioStreamManager:
                     self.streams["playback"].write(mixed_stereo.tobytes())
         except KeyboardInterrupt:
             print("\n🛑 Capture loop stopped")
+            self.shutdown()
 
     def shutdown(self):
         """Cleanup resources"""
