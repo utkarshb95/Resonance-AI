@@ -30,8 +30,11 @@ class AudioStreamManager:
                 input=True,
                 input_device_index=MIC_AUDIO_INDEX,
                 frames_per_buffer=CHUNK
-            ),
-            "playback": self.p.open(
+            )
+        }
+        if PLAYBACK_ENABLED:
+            print("Playback enabled.")
+            self.streams["playback"] = self.p.open(
                 format=FORMAT,
                 channels=CHANNELS_PLAYBACK,
                 rate=RATE,
@@ -39,7 +42,6 @@ class AudioStreamManager:
                 output_device_index=OUTPUT_DEVICE_INDEX,
                 frames_per_buffer=CHUNK
             )
-        }
 
     def capture_audio(self):
         """Main capture loop (to be run in a thread)"""
@@ -74,11 +76,12 @@ class AudioStreamManager:
                     mic_queue.put(mic_audio.copy())
 
                 # Mix and Playback
-                if len(sys_audio_mono) == len(mic_audio):
-                    mixed_mono = sys_audio_mono + mic_audio
-                    mixed_stereo = np.repeat(mixed_mono, 2)
-                    mixed_stereo = np.clip(mixed_stereo, -32768, 32767).astype(np.int16)
-                    self.streams["playback"].write(mixed_stereo.tobytes())
+                if PLAYBACK_ENABLED:
+                    if len(sys_audio_mono) == len(mic_audio):
+                        mixed_mono = sys_audio_mono + mic_audio
+                        mixed_stereo = np.repeat(mixed_mono, 2)
+                        mixed_stereo = np.clip(mixed_stereo, -32768, 32767).astype(np.int16)
+                        self.streams["playback"].write(mixed_stereo.tobytes())
         except KeyboardInterrupt:
             print("\n🛑 Capture loop stopped")
             self.shutdown()

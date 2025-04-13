@@ -19,6 +19,7 @@ CHUNK = 480                   # Buffer size
 SYS_AUDIO_INDEX = 1           # System audio device index (virtual cable)
 MIC_AUDIO_INDEX = 2           # Microphone device index
 OUTPUT_DEVICE_INDEX = 12      # Output device index
+PLAYBACK_ENABLED = False      # Set to True for debugging
 
 # Additional parameters for transcription
 MIN_SEGMENT_LENGTH = 3  # Seconds of audio per request
