@@ -2,6 +2,7 @@ import os
 import re
 import threading
 from queue import Empty
+from collections import OrderedDict
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from groq import Groq
@@ -26,8 +27,9 @@ class ContextManager:
 
         # Batch similarity check for efficiency
         if self.context_buffer:
-            similarities = np.dot(self.context_buffer, new_embed) / (
-                np.linalg.norm(self.context_buffer, axis=1) * np.linalg.norm(new_embed)
+            embeddings = np.array([embed for _, embed in self.context_buffer])
+            similarities = np.dot(embeddings, new_embed) / (
+                np.linalg.norm(embeddings, axis=1) * np.linalg.norm(new_embed)
             )
             if np.max(similarities) > self.min_similarity:
                 return
@@ -59,7 +61,7 @@ class QuestionDetector:
         self.main_model = "llama3-70b-8192"
         
         # Response cache
-        self.response_cache = {}
+        self.response_cache = OrderedDict()
         self.cache_threshold = 0.85  # Fuzzy match threshold
         self.cache_lock = threading.Lock() # Thread-safe cache access
 
@@ -82,8 +84,7 @@ class QuestionDetector:
         return self._llm_question_verification(text)
 
     def _llm_question_verification(self, text):
-        """Use Groq for ambiguous cases"""
-        context_text = " ".join(self.context.get_recent_context_text())
+        context_text = " ".join(self.context.get_recent_context())
         prompt = f"""Context: {context_text}
         Is this a question needing response? Text: {text}
         Answer only Yes/No:"""
@@ -110,9 +111,6 @@ class QuestionDetector:
             
         try:
             answer = self._generate_groq_answer(question)
-            # Thread-safe cache update
-            with self.cache_lock:
-                self._add_to_cache(question, answer)
             return answer
         except Exception as e:
             print(f"Groq error: {e}")
@@ -120,23 +118,25 @@ class QuestionDetector:
 
     def _generate_groq_answer(self, question):
         """Main answer generation"""
-        context_text = " ".join(self.context.get_recent_context())
-        prompt = f"""Interview context: {context_text}
-        Question: {question}
-        Provide concise answer using STAR method (2-3 sentences):"""
-        
-        response = self.groq.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model=self.main_model,
-            temperature=0.3,
-            max_tokens=150
-        )
-        answer = response.choices[0].message.content.strip()
+        try:
+            context_text = " ".join(self.context.get_recent_context())
+            prompt = f"""Interview context: {context_text}
+            Question: {question}
+            Provide concise answer using STAR method (2-3 sentences):"""
+            
+            response = self.groq.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model=self.main_model,
+                temperature=0.3,
+                max_tokens=150
+            )
+            answer = response.choices[0].message.content.strip()
 
-        # Cache the generated answer
-        with self.cache_lock:
-            self._add_to_cache(question, answer)
-        return answer
+            # Return the generated answer
+            return answer
+        except Exception as e:
+            print(f"⚠️ Groq answer generation failed: {e}")
+            raise e
 
     def _generate_fallback_answer(self, question):
         """Local fallback for reliability"""
@@ -145,10 +145,9 @@ class QuestionDetector:
     def _get_cached_response(self, query):
         """Check for similar cached queries"""
 
-        with self.cache_lock:
-            for cached_query in self.response_cache:
-                if fuzz.ratio(query.lower(), cached_query.lower()) > self.cache_threshold:
-                    return self.response_cache[cached_query]
+        for cached_query in self.response_cache:
+            if fuzz.ratio(query.lower(), cached_query.lower()) > self.cache_threshold:
+                return self.response_cache[cached_query]
         return None
 
     def _add_to_cache(self, question, answer):

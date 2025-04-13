@@ -9,6 +9,7 @@ __pycache__/
 # Unwanted files
 .test_audio.wav
 .script.py
+.test_response.py
 
 # Distribution / packaging
 .Python
