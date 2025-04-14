@@ -57,8 +57,8 @@ class QuestionDetector:
             "text-classification",
             model="shahrukhx01/question-vs-statement-classifier"
         )
-        self.fallback_model = "mixtral-8x7b-32768"
-        self.main_model = "llama3-70b-8192"
+        self.fallback_model = "mistral-saba-24b"
+        self.main_model = "llama-3.3-70b-versatile"
         
         # Response cache
         self.response_cache = OrderedDict()
