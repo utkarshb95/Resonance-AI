@@ -57,8 +57,8 @@ class QuestionDetector:
             "text-classification",
             model="shahrukhx01/question-vs-statement-classifier"
         )
-        self.fallback_model = "mistral-saba-24b"
-        self.main_model = "llama-3.3-70b-versatile"
+        self.fallback_model = "gemma2-9b-it" 
+        self.main_model = "llama3-70b-8192"
         
         # Response cache
         self.response_cache = OrderedDict()
@@ -115,9 +115,9 @@ class QuestionDetector:
                 return cached
             
         try:
-            print(f"🔎 Generating answer for: {question}")
+            print(f"🔎 Generating answer")
             answer = self._generate_groq_answer(question)
-            print(f"✅ Generated answer: {answer}")
+            print(f"✅ Generated answer")
             return answer
         except Exception as e:
             print(f"Groq error: {e}")
@@ -170,7 +170,7 @@ def response_worker():
     while True:
         try:
             transcript_entry = TRANSCRIPTION_QUEUE.get(timeout=1)
-            print(f"📥 Retrieved from TRANSCRIPTION_QUEUE: {transcript_entry}")
+            print(f"📥 Retrieved from TRANSCRIPTION_QUEUE")
             if transcript_entry is None:
                 break
             
@@ -179,11 +179,11 @@ def response_worker():
             speaker = speaker_part.lstrip('[').lower()
             
             if response := detector.process_input(text, speaker):
-                print(f"❓ Detected question: {text}")
+                print(f"❓ Detected question")
                 RESPONSE_QUEUE.put(response)
-                print(f"✅ Added to RESPONSE_QUEUE: {response}")
+                print(f"✅ Added to RESPONSE_QUEUE")
             else:
-                print(f"🔄 No question detected for: {text}")
+                print(f"🔄 No question detected")
             
             TRANSCRIPTION_QUEUE.task_done()
                 
