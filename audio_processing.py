@@ -107,5 +107,6 @@ class AudioTranscriber:
                         # Add to transcription queue for response generation
                         if clean_text and not TRANSCRIPTION_QUEUE.full():
                             TRANSCRIPTION_QUEUE.put(f"[{source.upper()}]: {clean_text}")
+                            print(f"✅ Added to queue: {clean_text}")
             finally:
                 queue.task_done()

@@ -77,10 +77,15 @@ class QuestionDetector:
         """Hybrid question detection"""
         # Fast local check
         local_result = self.local_classifier(text[:512])[0]
+        print(f"🔍 Local classifier result: {local_result}")
+
         if local_result['score'] > 0.9:
+            is_question = local_result['label'] == 'LABEL_1'
+            print(f"🏷️ Detected as {'Question' if is_question else 'Statement'}")
             return local_result['label'] == 'LABEL_1'
             
         # LLM verification for edge cases
+        print("🟡 Using LLM verification")
         return self._llm_question_verification(text)
 
     def _llm_question_verification(self, text):
@@ -110,7 +115,9 @@ class QuestionDetector:
                 return cached
             
         try:
+            print(f"🔎 Generating answer for: {question}")
             answer = self._generate_groq_answer(question)
+            print(f"✅ Generated answer: {answer}")
             return answer
         except Exception as e:
             print(f"Groq error: {e}")
@@ -163,6 +170,7 @@ def response_worker():
     while True:
         try:
             transcript_entry = TRANSCRIPTION_QUEUE.get(timeout=1)
+            print(f"📥 Retrieved from TRANSCRIPTION_QUEUE: {transcript_entry}")
             if transcript_entry is None:
                 break
             
@@ -171,7 +179,11 @@ def response_worker():
             speaker = speaker_part.lstrip('[').lower()
             
             if response := detector.process_input(text, speaker):
+                print(f"❓ Detected question: {text}")
                 RESPONSE_QUEUE.put(response)
+                print(f"✅ Added to RESPONSE_QUEUE: {response}")
+            else:
+                print(f"🔄 No question detected for: {text}")
             
             TRANSCRIPTION_QUEUE.task_done()
                 
@@ -182,3 +194,23 @@ def response_worker():
         except Exception as e:
             print(f"⚠️ Response worker error: {e}")
             TRANSCRIPTION_QUEUE.task_done()
+
+def response_consumer():
+    """Consume responses from the RESPONSE_QUEUE."""
+    while True:
+        try:
+            response = RESPONSE_QUEUE.get(timeout=1)
+            if response is None:
+                break
+            
+            # Simulate sending the response to a UI or another system
+            print(f"💬 AI Response: {response}")
+            RESPONSE_QUEUE.task_done()
+            
+        except Empty:
+            continue
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            print(f"⚠️ Response consumer error: {e}")
+            RESPONSE_QUEUE.task_done()

@@ -1,9 +1,9 @@
 import threading
 import time
-from config import sys_queue, mic_queue
+from config import sys_queue, mic_queue, TRANSCRIPTION_QUEUE, RESPONSE_QUEUE
 from audio_processing import AudioTranscriber
 from audio_stream import AudioStreamManager
-from response import response_worker
+from response import response_worker, response_consumer
 
 class MainApp:
     def __init__(self):
@@ -26,8 +26,9 @@ class MainApp:
 
             print("Transcription threads started. Press Ctrl+C to stop.")
 
-            # Start the response worker thread
+            # Start the response worker and consumer thread
             threading.Thread(target=response_worker, daemon=True).start()
+            threading.Thread(target=response_consumer, daemon=True).start()
 
             while self._run:
                 # Main loop to keep the app running
@@ -46,6 +47,9 @@ class MainApp:
         # Signal queues to stop workers
         sys_queue.put(None)
         mic_queue.put(None)
+
+        TRANSCRIPTION_QUEUE.put(None)
+        RESPONSE_QUEUE.put(None)
 
 if __name__ == "__main__":
     app = MainApp()
