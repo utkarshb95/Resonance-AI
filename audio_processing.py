@@ -44,7 +44,7 @@ class AudioTranscriber:
             audio_np = audio_np.mean(axis=1)
 
         # Final validation before transcription to catch VAD false positives (RMS Energy Check) 
-        def is_silent(audio_np, threshold=0.02):
+        def is_silent(audio_np, threshold=0.05):
             rms = np.sqrt(np.mean(audio_np**2))
             return rms < threshold
         if is_silent(audio_np):     # Skip silent segments

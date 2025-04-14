@@ -26,7 +26,7 @@ MIN_SEGMENT_LENGTH = 3  # Seconds of audio per request
 OVERLAP = 1.2           # Overlap in seconds for audio segments
 REQUEST_INTERVAL = 1.5  # Seconds between requests (under 20/min)
 LAST_REQUEST_TIME = {"system": 0, "microphone": 0}
-VAD_AGGRESSIVENESS = 1  # WebRTC VAD filter
+VAD_AGGRESSIVENESS = 2  # WebRTC VAD filter
 VAD_MODE = webrtcvad.Vad(VAD_AGGRESSIVENESS)  # Initialize VAD
 DEDUPE_SIMILARITY = 0.65  # Adjusted for better balance
 
