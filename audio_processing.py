@@ -35,6 +35,12 @@ class AudioTranscriber:
         )
     
     @staticmethod
+    def is_silent(audio_np, threshold=0.05):
+            """Check if audio is below energy threshold."""
+            rms = np.sqrt(np.mean(audio_np**2))
+            return rms < threshold
+    
+    @staticmethod
     def transcribe_audio(audio_np, source_name):
         """Transcribe audio data using Whisper model."""
         audio_np = audio_np.astype(np.float32) / 32768.0 # Normalize to float32
@@ -42,12 +48,8 @@ class AudioTranscriber:
         # Convert stereo to mono if needed
         if audio_np.ndim > 1:
             audio_np = audio_np.mean(axis=1)
-
-        # Final validation before transcription to catch VAD false positives (RMS Energy Check) 
-        def is_silent(audio_np, threshold=0.05):
-            rms = np.sqrt(np.mean(audio_np**2))
-            return rms < threshold
-        if is_silent(audio_np):     # Skip silent segments
+        
+        if AudioTranscriber.is_silent(audio_np):     # Skip silent segments
             return ""
 
         try:
@@ -59,10 +61,11 @@ class AudioTranscriber:
                 word_timestamps=True,
                 vad_filter=False,
                 repetition_penalty=1.5,
-                no_speech_threshold=0.25,
+                no_speech_threshold=0.6,
+                log_prob_threshold=-1.0,
                 condition_on_previous_text=True,
                 patience=1.5,
-                initial_prompt="Focus on computer science terms",
+                initial_prompt="Focus on computer science terms" if TRANSCRIPTION_HISTORY[source_name] else None,
                 prefix=TRANSCRIPTION_HISTORY[source_name][-1] if TRANSCRIPTION_HISTORY[source_name] else ""
             )
             return f"[{source_name.upper()}]: {' '.join(seg.text for seg in segments)}"
