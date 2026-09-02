@@ -16,9 +16,9 @@ CHANNELS_RECORD_MIC = 1       # Mono audio for recording
 CHANNELS_PLAYBACK = 2         # Stereo audio for playback
 RATE = 16000                  # Sampling rate (16 kHz)
 CHUNK = 480                   # Buffer size
-SYS_AUDIO_INDEX = 1           # System audio device index (virtual cable)
-MIC_AUDIO_INDEX = 2           # Microphone device index
-OUTPUT_DEVICE_INDEX = 12      # Output device index
+SYS_AUDIO_INDEX = 2           # CABLE Output (VB-Audio Virtual Cable)
+MIC_AUDIO_INDEX = 1           # Microphone (Mic UVC Camera)
+OUTPUT_DEVICE_INDEX = 12      # Speakers (Realtek(R) Audio)
 PLAYBACK_ENABLED = False      # Set to True for debugging
 
 # Additional parameters for transcription

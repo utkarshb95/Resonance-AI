@@ -57,8 +57,8 @@ class QuestionDetector:
             "text-classification",
             model="shahrukhx01/question-vs-statement-classifier"
         )
-        self.fallback_model = "gemma2-9b-it" 
-        self.main_model = "llama3-70b-8192"
+        self.fallback_model = "openai/gpt-oss-20b"
+        self.main_model = "openai/gpt-oss-120b"
         
         # Response cache
         self.response_cache = OrderedDict()

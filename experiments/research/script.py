@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""ARCHIVE: exported research notebook; do not use as the application entry point."""
 # coding: utf-8
 
 # ## Initial code to test audio

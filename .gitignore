@@ -11,6 +11,14 @@ __pycache__/
 .script.py
 .test_response.py
 
+# Local project artifacts
+.vscode/
+ocr_debug/
+ocr_results.txt
+*.obj
+*.exp
+*.lib
+
 # Distribution / packaging
 .Python
 build/

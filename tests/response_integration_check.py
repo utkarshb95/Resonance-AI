@@ -1,3 +1,5 @@
+"""Manual integration check: loads ML models and may call the Groq API."""
+
 import time
 from config import TRANSCRIPTION_QUEUE, RESPONSE_QUEUE
 from response import ContextManager, QuestionDetector, response_worker
